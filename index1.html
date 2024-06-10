@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced To-Do List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 350px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .input-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 70%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            width: 25%;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background: #f9f9f9;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #ddd;
+        }
+        li.completed {
+            text-decoration: line-through;
+            color: #aaa;
+        }
+        li .buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .edit-button, .delete-button, .complete-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .edit-button {
+            color: blue;
+        }
+        .delete-button {
+            color: red;
+        }
+        .complete-button {
+            color: green;
+        }
+        .filter-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .filter-button {
+            background: #ddd;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .filter-button.active {
+            background: #28a745;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>To-Do List</h1>
+        <div class="input-container">
+            <input type="text" id="todo-input" placeholder="Add a new task...">
+            <button id="add-button">Add</button>
+        </div>
+        <ul id="todo-list"></ul>
+        <div class="filter-container">
+            <button class="filter-button" data-filter="all">All</button>
+            <button class="filter-button" data-filter="active">Active</button>
+            <button class="filter-button" data-filter="completed">Completed</button>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('todo-input');
+            const addButton = document.getElementById('add-button');
+            const todoList = document.getElementById('todo-list');
+            const filterButtons = document.querySelectorAll('.filter-button');
+
+            let todos = JSON.parse(localStorage.getItem('todos')) || [];
+
+            function saveTodos() {
+                localStorage.setItem('todos', JSON.stringify(todos));
+            }
+
+            function addTask(taskText, completed = false) {
+                const task = {
+                    text: taskText,
+                    completed,
+                    id: Date.now().toString()
+                };
+                todos.push(task);
+                saveTodos();
+                renderTasks();
+            }
+
+            function renderTasks(filter = 'all') {
+                todoList.innerHTML = '';
+                const filteredTodos = todos.filter(todo => {
+                    if (filter === 'all') return true;
+                    if (filter === 'active') return !todo.completed;
+                    if (filter === 'completed') return todo.completed;
+                });
+
+                filteredTodos.forEach(task => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = task.text;
+                    listItem.className = task.completed ? 'completed' : '';
+                    listItem.dataset.id = task.id;
+
+                    const buttonsDiv = document.createElement('div');
+                    buttonsDiv.className = 'buttons';
+
+                    const completeButton = document.createElement('button');
+                    completeButton.textContent = '✔';
+                    completeButton.className = 'complete-button';
+                    completeButton.addEventListener('click', () => toggleComplete(task.id));
+
+                    const editButton = document.createElement('button');
+                    editButton.textContent = '✎';
+                    editButton.className = 'edit-button';
+                    editButton.addEventListener('click', () => editTask(task.id));
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'X';
+                    deleteButton.className = 'delete-button';
+                    deleteButton.addEventListener('click', () => deleteTask(task.id));
+
+                    buttonsDiv.appendChild(completeButton);
+                    buttonsDiv.appendChild(editButton);
+                    buttonsDiv.appendChild(deleteButton);
+                    listItem.appendChild(buttonsDiv);
+                    todoList.appendChild(listItem);
+                });
+            }
+
+            function toggleComplete(id) {
+                todos = todos.map(task => task.id === id ? {...task, completed: !task.completed} : task);
+                saveTodos();
+                renderTasks();
+            }
+
+            function editTask(id) {
+                const task = todos.find(task => task.id === id);
+                input.value = task.text;
+                addButton.textContent = 'Update';
+                addButton.onclick = () => updateTask(id);
+            }
+
+            function updateTask(id) {
+                const taskIndex = todos.findIndex(task => task.id === id);
+                todos[taskIndex].text = input.value.trim();
+                saveTodos();
+                renderTasks();
+                addButton.textContent = 'Add';
+                addButton.onclick = addNewTask;
+                input.value = '';
+            }
+
+            function deleteTask(id) {
+                todos = todos.filter(task => task.id !== id);
+                saveTodos();
+                renderTasks();
+            }
+
+            function addNewTask() {
+                const taskText = input.value.trim();
+                if (taskText) {
+                    addTask(taskText);
+                    input.value = '';
+                }
+            }
+
+            addButton.addEventListener('click', addNewTask);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addNewTask();
+                }
+            });
+
+            filterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    document.querySelector('.filter-button.active').classList.remove('active');
+                    button.classList.add('active');
+                    renderTasks(button.dataset.filter);
+                });
+            });
+
+            renderTasks();
+        });
+    </script>
+</body>
+</html>
